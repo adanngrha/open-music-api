@@ -1,0 +1,22 @@
+{
+  "name": "open-music-api",
+  "version": "1.0.0",
+  "description": "Open Music API V1",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adanngrha/open-music-api.git"
+  },
+  "author": "Adan Nugraha",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/adanngrha/open-music-api/issues"
+  },
+  "homepage": "https://github.com/adanngrha/open-music-api#readme",
+  "devDependencies": {
+    "nodemon": "^2.0.19"
+  }
+}
