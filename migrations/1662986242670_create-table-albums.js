@@ -1,11 +1,3 @@
-/* eslint-disable camelcase */
-
-exports.shorthands = undefined;
-
-/* eslint-disable camelcase */
-
-exports.shorthands = undefined;
-
 exports.up = (pgm) => {
   pgm.createTable('albums', {
     id: {
