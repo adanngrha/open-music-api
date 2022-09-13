@@ -14,8 +14,6 @@
     "rules": {
         "no-console": "off",
         "linebreak-style": "off",
-        "eol-last" : "off",
-        "indent" : "off",
         "no-underscore-dangle" : "off"
     }
 }
