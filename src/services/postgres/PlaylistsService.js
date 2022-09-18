@@ -7,8 +7,9 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
 
 class PlaylistsService {
-  constructor() {
+  constructor(collaborationService) {
     this._pool = new Pool();
+    this._collaborationService = collaborationService;
   }
 
   async addPlaylist({ name, owner }) {
@@ -33,8 +34,10 @@ class PlaylistsService {
     const query = {
       text: `SELECT playlists.id, playlists.name, users.username 
       FROM playlists
-      LEFT JOIN users ON playlists.owner = users.id
+      JOIN users ON playlists.owner = users.id
+      JOIN collaborations ON playlists.id = collaborations.playlist_id
       WHERE playlists.owner = $1
+      OR collaborations.user_id = $1 
       GROUP BY playlists.id, users.username`,
       values: [owner],
     };
@@ -151,7 +154,10 @@ class PlaylistsService {
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw error;
-      } else {
+      }
+      try {
+        await this._collaborationService.verifyCollaborator(playlistId, userId);
+      } catch {
         throw error;
       }
     }
