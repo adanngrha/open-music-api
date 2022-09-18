@@ -33,12 +33,11 @@ class PlaylistsService {
   async getPlaylists(owner) {
     const query = {
       text: `SELECT playlists.id, playlists.name, users.username 
-      FROM playlists
-      JOIN users ON playlists.owner = users.id
-      JOIN collaborations ON playlists.id = collaborations.playlist_id
-      WHERE playlists.owner = $1
-      OR collaborations.user_id = $1 
-      GROUP BY playlists.id, users.username`,
+      FROM playlists 
+      LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id 
+      LEFT JOIN users ON playlists.owner = users.id 
+      WHERE playlists.owner = $1 
+      OR collaborations.user_id = $1`,
       values: [owner],
     };
     const result = await this._pool.query(query);
@@ -126,6 +125,53 @@ class PlaylistsService {
 
     if (!result.rowCount) {
       throw new NotFoundError('Lagu gagal dihapus dari playlist. Playlist atau lagu tidak ditemukan');
+    }
+  }
+
+  async getPlaylistActivities(playlistId) {
+    const checkPlaylist = {
+      text: 'SELECT * FROM playlists WHERE id = $1',
+      values: [playlistId],
+    };
+
+    const checkPlaylistResult = await this._pool.query(checkPlaylist);
+
+    if (!checkPlaylistResult.rowCount) {
+      throw new NotFoundError('Playlist tidak ditemukan!');
+    }
+
+    const query = {
+      text: `SELECT users.username, songs.title, playlist_song_activities.action, playlist_song_activities.time
+      FROM playlist_song_activities 
+      JOIN users ON playlist_song_activities.user_id = users.id
+      JOIN songs ON playlist_song_activities.song_id = songs.id
+      WHERE playlist_song_activities.playlist_id = $1`,
+      values: [playlistId],
+    };
+
+    const activitiesResult = await this._pool.query(query);
+
+    if (!activitiesResult.rowCount) {
+      throw new NotFoundError('Playlist tidak tidak memiliki aktivitas!');
+    }
+
+    return activitiesResult.rows;
+  }
+
+  async addActivity(playlistId, songId, credentialId, action) {
+    // menambahkan aktivitas ke playlist_song_activities
+    const id = nanoid(16);
+    const time = new Date().toISOString();
+
+    const query = {
+      text: 'INSERT INTO playlist_song_activities VALUES($1, $2, $3, $4, $5, $6) RETURNING id',
+      values: [id, playlistId, songId, credentialId, action, time],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rows[0].id) {
+      throw new InvariantError('Aktivitas gagal ditambahkan!');
     }
   }
 
