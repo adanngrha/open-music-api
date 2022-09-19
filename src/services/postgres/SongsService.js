@@ -29,36 +29,13 @@ class SongsService {
     return result.rows[0].id;
   }
 
-  async getSongs() {
-    const result = await this._pool.query('SELECT id, title, performer FROM songs');
-    return result.rows.map(mapDBToModelSongs);
-  }
-
-  async getSongsWithTitle(title) {
+  async getSongs(title = '', performer = '') {
     const query = {
-      text: 'SELECT id, title, performer FROM songs WHERE LOWER(title) LIKE LOWER($1)',
-      values: [`%${title}%`],
-    };
-    const result = await this._pool.query(query);
-    return result.rows.map(mapDBToModelSongs);
-  }
-
-  async getSongsWithPerformer(performer) {
-    const query = {
-      text: 'SELECT id, title, performer FROM songs WHERE LOWER(performer) LIKE LOWER($1)',
-      values: [`%${performer}%`],
-    };
-    const result = await this._pool.query(query);
-    return result.rows.map(mapDBToModelSongs);
-  }
-
-  async getSongsWithTitleAndPerformer(title, performer) {
-    const query = {
-      text: 'SELECT id, title, performer FROM songs WHERE LOWER(title) LIKE LOWER($1) AND LOWER(performer) LIKE LOWER($2)',
+      text: 'SELECT id, title, performer FROM songs WHERE title ILIKE $1 and performer ILIKE $2',
       values: [`%${title}%`, `%${performer}%`],
     };
-    const result = await this._pool.query(query);
-    return result.rows.map(mapDBToModelSongs);
+    const { rows } = await this._pool.query(query);
+    return rows;
   }
 
   async getSongById(id) {
