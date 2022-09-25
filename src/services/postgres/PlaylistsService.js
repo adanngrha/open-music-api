@@ -128,16 +128,7 @@ class PlaylistsService {
   }
 
   async getPlaylistActivities(playlistId) {
-    const checkPlaylist = {
-      text: 'SELECT * FROM playlists WHERE id = $1',
-      values: [playlistId],
-    };
-
-    const checkPlaylistResult = await this._pool.query(checkPlaylist);
-
-    if (!checkPlaylistResult.rowCount) {
-      throw new NotFoundError('Playlist tidak ditemukan!');
-    }
+    await this.checkPlaylist(playlistId);
 
     const query = {
       text: `SELECT users.username, songs.title, playlist_song_activities.action, playlist_song_activities.time
@@ -171,6 +162,19 @@ class PlaylistsService {
 
     if (!result.rows[0].id) {
       throw new InvariantError('Aktivitas gagal ditambahkan!');
+    }
+  }
+
+  async checkPlaylist(playlistId) {
+    const checkPlaylist = {
+      text: 'SELECT * FROM playlists WHERE id = $1',
+      values: [playlistId],
+    };
+
+    const checkPlaylistResult = await this._pool.query(checkPlaylist);
+
+    if (!checkPlaylistResult.rowCount) {
+      throw new NotFoundError('Playlist tidak ditemukan!');
     }
   }
 

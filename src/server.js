@@ -1,6 +1,7 @@
 require('dotenv').config();
 const Hapi = require('@hapi/hapi');
 const Jwt = require('@hapi/jwt');
+const Inert = require('@hapi/inert');
 const ClientError = require('./exceptions/ClientError');
 
 // albums
@@ -34,6 +35,11 @@ const collaborations = require('./api/collaborations');
 const CollaborationsService = require('./services/postgres/CollaborationsService');
 const CollaborationsValidator = require('./validator/collaborations');
 
+// Exports
+const _exports = require('./api/exports');
+const ProducerService = require('./services/rabbitmq/ProducerService');
+const ExportsValidator = require('./validator/exports');
+
 const init = async () => {
   const collaborationsService = new CollaborationsService();
   const albumsService = new AlbumsService();
@@ -56,6 +62,9 @@ const init = async () => {
   await server.register([
     {
       plugin: Jwt,
+    },
+    {
+      plugin: Inert,
     },
   ]);
 
@@ -121,24 +130,61 @@ const init = async () => {
       validator: CollaborationsValidator,
     },
   },
+  {
+    plugin: _exports,
+    options: {
+      ProducerService,
+      playlistsService,
+      validator: ExportsValidator,
+    },
+  },
   ]);
+
+  // server.ext('onPreResponse', (request, h) => {
+  //   // mendapatkan konteks response dari request
+  //   const { response } = request;
+
+  //   if (response instanceof ClientError) {
+  //     // membuat response baru dari response toolkit sesuai kebutuhan error handling
+  //     const newResponse = h.response({
+  //       status: 'fail',
+  //       message: response.message,
+  //     });
+  //     newResponse.code(response.statusCode);
+  //     return newResponse;
+  //   }
+
+  //   // jika bukan ClientError, lanjutkan dengan response sebelumnya (tanpa terintervensi)
+  //   return response.continue || response;
+  // });
 
   server.ext('onPreResponse', (request, h) => {
     // mendapatkan konteks response dari request
     const { response } = request;
-
-    if (response instanceof ClientError) {
-      // membuat response baru dari response toolkit sesuai kebutuhan error handling
+    if (response instanceof Error) {
+      // penanganan client error secara internal.
+      if (response instanceof ClientError) {
+        const newResponse = h.response({
+          status: 'fail',
+          message: response.message,
+        });
+        newResponse.code(response.statusCode);
+        return newResponse;
+      }
+      // mempertahankan penanganan client error oleh hapi secara native, seperti 404, etc.
+      if (!response.isServer) {
+        return h.continue;
+      }
+      // penanganan server error sesuai kebutuhan
       const newResponse = h.response({
-        status: 'fail',
-        message: response.message,
+        status: 'error',
+        message: 'terjadi kegagalan pada server kami',
       });
-      newResponse.code(response.statusCode);
+      newResponse.code(500);
       return newResponse;
     }
-
-    // jika bukan ClientError, lanjutkan dengan response sebelumnya (tanpa terintervensi)
-    return response.continue || response;
+    // jika bukan error, lanjutkan dengan response sebelumnya (tanpa terintervensi)
+    return h.continue;
   });
 
   await server.start();
