@@ -45,6 +45,10 @@ class AlbumService {
       throw new NotFoundError('Album tidak ditemukan');
     }
 
+    if (!songsResult.rowCount) {
+      songsResult.rows = null;
+    }
+
     albumResult.rows[0].songs = songsResult.rows;
 
     return albumResult.rows.map(mapDBToModelAlbums)[0];
@@ -74,6 +78,19 @@ class AlbumService {
 
     if (!result.rowCount) {
       throw new NotFoundError('Album gagal dihapus. Id tidak ditemukan');
+    }
+  }
+
+  async addAlbumCoverById(id, { coverUrl }) {
+    const query = {
+      text: 'UPDATE albums SET cover = $1 WHERE id = $2',
+      values: [coverUrl, id],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rowCount) {
+      throw new NotFoundError('Gagal menambahkan cover album. Id tidak ditemukan');
     }
   }
 }
