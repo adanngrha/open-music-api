@@ -1,2 +1,2 @@
 # open-music-api
-Open Music API V2
+Open Music API
