@@ -1,10 +1,12 @@
+const autoBind = require('auto-bind');
+
 class UploadsHandler {
   constructor(storageService, albumsService, validator) {
     this._storageService = storageService;
     this._albumsService = albumsService;
     this._validator = validator;
 
-    this.postAlbumCoverHandler = this.postAlbumCoverHandler.bind(this);
+    autoBind(this);
   }
 
   async postAlbumCoverHandler(request, h) {
