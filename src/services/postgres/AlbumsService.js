@@ -5,8 +5,9 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const { mapDBToModelAlbums } = require('../../utils/albums');
 
 class AlbumService {
-  constructor() {
+  constructor(cacheService) {
     this._pool = new Pool();
+    this._cacheService = cacheService;
   }
 
   async addAlbum({ name, year }) {
@@ -91,6 +92,74 @@ class AlbumService {
 
     if (!result.rowCount) {
       throw new NotFoundError('Gagal menambahkan cover album. Id tidak ditemukan');
+    }
+  }
+
+  async addlikeOrUnlikedAlbumById(userId, albumId) {
+    const checkIfAlbumValid = {
+      text: 'SELECT * FROM albums WHERE id = $1',
+      values: [albumId],
+    };
+
+    const checkAlbum = await this._pool.query(checkIfAlbumValid);
+
+    if (!checkAlbum.rowCount) {
+      throw new NotFoundError('Gagal menyukai album. Album tidak ditemukan');
+    }
+
+    const checkIfAlbumAlreadyLiked = {
+      text: 'SELECT * FROM user_album_likes WHERE user_id = $1 AND album_id = $2',
+      values: [userId, albumId],
+    };
+
+    const checkResult = await this._pool.query(checkIfAlbumAlreadyLiked);
+
+    if (!checkResult.rowCount) {
+      const id = nanoid(16);
+
+      const insertLike = {
+        text: 'INSERT INTO user_album_likes VALUES($1, $2, $3)',
+        values: [id, userId, albumId],
+      };
+
+      await this._pool.query(insertLike);
+      await this._cacheService.delete(`likes:${albumId}`);
+
+      return 'Berhasil menyukai album';
+    }
+
+    const deleteLike = {
+      text: 'DELETE FROM user_album_likes WHERE user_id = $1 AND album_id = $2',
+      values: [userId, albumId],
+    };
+
+    await this._pool.query(deleteLike);
+    await this._cacheService.delete(`likes:${albumId}`);
+
+    return 'Batal menyukai album';
+  }
+
+  async getAlbumLikesById(id) {
+    try {
+      // mendapatkan jumlah album likes dari cache
+      let result = await this._cacheService.get(`likes:${id}`);
+      result = JSON.parse(result);
+      result.cache = true;
+
+      return result;
+    } catch (error) {
+      const query = {
+        text: 'SELECT * FROM user_album_likes WHERE album_id = $1',
+        values: [id],
+      };
+
+      const result = await this._pool.query(query);
+
+      // jumlah album likes akan disimpan pada cache sebelum fungsi getNotes dikembalikan
+      result.condition = await this._cacheService.set(`likes:${id}`, JSON.stringify(result));
+      result.cache = false;
+
+      return result;
     }
   }
 }
